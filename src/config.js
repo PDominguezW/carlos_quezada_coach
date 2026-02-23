@@ -26,6 +26,12 @@ export const config = {
 
   databaseUrl: process.env.DATABASE_URL || "./data/coach.db",
 
+  // RAG: embeddings con OpenAI (opcional; si no hay key, el RAG no se usa)
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY || "",
+    embeddingModel: process.env.OPENAI_EMBEDDING_MODEL || "text-embedding-3-small",
+  },
+
   plan: {
     deliveryDay: process.env.PLAN_DELIVERY_DAY || "monday",
     deliveryHour: parseInt(process.env.PLAN_DELIVERY_HOUR || "7", 10),

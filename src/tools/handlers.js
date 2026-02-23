@@ -1,4 +1,6 @@
 import { config } from "../config.js";
+import { getAccessToken, fetchActivities } from "../services/strava.js";
+import { generateAndSavePlanning } from "../services/planningGenerator.js";
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -100,8 +102,37 @@ export function disconnectStrava(db, userId) {
   return "Strava desconectado.";
 }
 
-export function syncStravaActivities(db, userId) {
-  return "Sincronización de Strava se ejecutará en segundo plano. En unos segundos tendré tus actividades actualizadas.";
+export async function syncStravaActivities(db, userId) {
+  const token = await getAccessToken(userId);
+  if (!token) return "No tienes Strava conectado. Pídeme el enlace para conectar.";
+  const activities = await fetchActivities(userId, 30);
+  if (!activities || !Array.isArray(activities)) return "No pude obtener actividades de Strava. ¿Puedes intentar de nuevo?";
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO strava_activities (user_id, strava_id, name, activity_type, start_date, distance_m, moving_time_s, elapsed_time_s, summary)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  let added = 0;
+  for (const a of activities) {
+    const summary = JSON.stringify({
+      distance_km: (a.distance / 1000).toFixed(2),
+      pace: a.average_speed ? (1000 / 60 / (a.average_speed || 1)).toFixed(1) + " min/km" : null,
+    });
+    insert.run(
+      userId,
+      String(a.id),
+      a.name || "Sin nombre",
+      a.type || "Run",
+      a.start_date,
+      a.distance ?? 0,
+      a.moving_time ?? 0,
+      a.elapsed_time ?? 0,
+      summary
+    );
+    if (db.prepare("SELECT changes()").get().changes > 0) added++;
+  }
+  return added === 0
+    ? "No había actividades nuevas. Ya tenía todo sincronizado."
+    : `Listo. Añadí ${added} actividad(es) nueva(s). Ya las tengo en cuenta.`;
 }
 
 export function updateActivityNotes(db, userId, args) {
@@ -190,4 +221,8 @@ export function setTimezone(db, userId, args) {
   const tz = args.timezone || "";
   db.prepare("UPDATE users SET timezone = ?, updated_at = datetime('now') WHERE id = ?").run(tz, userId);
   return `Zona horaria actualizada a ${tz}.`;
+}
+
+export async function generateNewPlanning(db, userId, args) {
+  return generateAndSavePlanning(db, userId);
 }

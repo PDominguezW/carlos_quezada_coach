@@ -18,6 +18,34 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+app.get("/strava/callback", async (req, res) => {
+  const code = req.query.code;
+  const state = req.query.state;
+  if (!code || !state) {
+    res.status(400).send("<h1>Faltan code o state</h1>");
+    return;
+  }
+  const userId = parseInt(state, 10);
+  if (!userId) {
+    res.status(400).send("<h1>State inválido</h1>");
+    return;
+  }
+  try {
+    const { exchangeCodeForTokens } = await import("./services/strava.js");
+    const ok = await exchangeCodeForTokens(code, userId);
+    if (ok) {
+      res.send(
+        "<!DOCTYPE html><html><head><meta charset='utf-8'></head><body><h1>Strava conectado</h1><p>Ya puedes cerrar esta ventana y volver a WhatsApp.</p></body></html>"
+      );
+    } else {
+      res.status(500).send("<h1>Error al conectar con Strava</h1>");
+    }
+  } catch (e) {
+    if (config.debug) console.error(e);
+    res.status(500).send("<h1>Error</h1>");
+  }
+});
+
 app.post("/webhook/whatsapp", async (req, res) => {
   try {
     const fromNumber = (req.body?.From || req.body?.from || "").replace("whatsapp:", "").trim();

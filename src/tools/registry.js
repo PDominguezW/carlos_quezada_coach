@@ -132,6 +132,11 @@ const TOOLS_DEFINITIONS = [
       required: ["timezone"],
     },
   },
+  {
+    name: "generate_new_planning",
+    description: "Generar una nueva planificación de entrenamiento (N semanas, método noruego) y guardarla. Usar cuando el usuario pida empezar de cero o generar nueva planificación.",
+    input_schema: { type: "object", properties: {} },
+  },
 ];
 
 const HANDLERS = {
@@ -154,18 +159,20 @@ const HANDLERS = {
   get_today_plan: handlers.getTodayPlan,
   get_week_summary: handlers.getWeekSummary,
   set_timezone: handlers.setTimezone,
+  generate_new_planning: handlers.generateNewPlanning,
 };
 
 export function getToolsDefinitions() {
   return TOOLS_DEFINITIONS;
 }
 
-export function runTool(name, args, userId, db) {
+export async function runTool(name, args, userId, db) {
   const handler = HANDLERS[name];
   if (!handler) return `Error: herramienta desconocida '${name}'.`;
   try {
     const result = handler(db, userId, args || {});
-    return typeof result === "string" ? result : String(result);
+    const value = result instanceof Promise ? await result : result;
+    return typeof value === "string" ? value : String(value);
   } catch (e) {
     return `Error al ejecutar ${name}: ${e.message}`;
   }

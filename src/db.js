@@ -94,6 +94,14 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_planning_weeks_period ON planning_weeks(period_id);
   CREATE INDEX IF NOT EXISTS idx_planning_periods_user ON planning_periods(user_id);
   CREATE INDEX IF NOT EXISTS idx_strava_activities_user ON strava_activities(user_id);
+
+  CREATE TABLE IF NOT EXISTS knowledge_chunks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source TEXT NOT NULL,
+    text TEXT NOT NULL,
+    embedding_json TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
 `);
 
 export function getOrCreateUser(phone) {
